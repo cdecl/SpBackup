@@ -21,6 +21,17 @@ ostream& operator<<(ostream& os, const _bstr_t &bs)
 	return os;
 }
 
+pair<string, string> split_kv(string str, const string& fd)
+{
+	string v;
+	string k = str;
+	auto pos = str.find(fd);
+	if (pos != string::npos) {
+		k = str.substr(0, pos);
+		v = str.substr(pos + fd.size());
+	}
+	return make_pair(k, v);
+}
 
 string replaceall(string str, const string &strFind, const string &strReplaced) 
 {
@@ -66,11 +77,22 @@ string GetTypeName(const string& strType)
 	return strName;
 }
 
-string GetTextObject(GLASS::ADOComm &adoProc, const string &strProcName)
+string GetTextObject(GLASS::ADOComm &adoProc, const string &strProcName, const string &strType)
 {
 	GLASS::CommandHelper cmd;
-	cmd.SetCommandText("Select text As txt From syscomments with(nolock) Where id = object_id( ? )");
-	cmd.AddParamInputVarchar("@obj_name", strProcName.c_str(), 200);
+	auto [k, v] = split_kv(strType, ":");
+
+	if (v.length() > 0) {
+		string sProcName = v;
+		sProcName += " ?";
+
+		cmd.SetCommandText(sProcName.c_str());
+		cmd.AddParamInputVarchar("@obj_name", strProcName.c_str(), 200);
+	}
+	else {
+		cmd.SetCommandText("Select text As txt From syscomments with(nolock) Where id = object_id( ? )");
+		cmd.AddParamInputVarchar("@obj_name", strProcName.c_str(), 200);
+	}
 
 	adoProc.OpenRs(cmd);
 
@@ -78,17 +100,17 @@ string GetTextObject(GLASS::ADOComm &adoProc, const string &strProcName)
 	string str;
 
 	while (!adoProc.IsEOF()) {
-		str = (LPCSTR)(_bstr_t)adoProc("txt");
+		str = (LPCSTR)(_bstr_t)adoProc(0L);
 		str = replaceall(str, "\r\n", "\n");
 
-		os << str;
+		os << str << '\n';
 		adoProc.MoveNext();
 	}
 
 	return os.str();
 }
 
-void ProcedureBackup(GLASS::ADOComm &adoProc, const string &strPath, const string &strProcName) 
+void ProcedureBackup(GLASS::ADOComm &adoProc, const string &strPath, const string &strProcName, const string& strType)
 {
 	try {
 		string strFilePath = strPath;
@@ -99,14 +121,16 @@ void ProcedureBackup(GLASS::ADOComm &adoProc, const string &strPath, const strin
 		strFilePath += strProcName;
 		strFilePath += ".sql";
 
-		string str = GetTextObject(adoProc, strProcName);
+		string str = GetTextObject(adoProc, strProcName, strType);
 
 		ofstream fout(strFilePath.c_str());
 		fout << str << endl;
 		fout.close();
 
 	}
-	catch (...) {}
+	catch (exception &ex) {
+		cerr << ex.what() << endl;
+	}
 
 	adoProc.CloseRs();
 }
@@ -123,7 +147,6 @@ void Run(const string &strConnectionString, const string &strPath, const string 
 		fout.open(strPath.c_str());
 	}
 
-
 	std::ostringstream osSql;
 
 	if (strType == "ALL") {
@@ -131,8 +154,10 @@ void Run(const string &strConnectionString, const string &strPath, const string 
 		osSql << "Select name From sysobjects with(nolock) Where Type In ('FN', 'IF', 'P', 'TF', 'TR') ";
 	}
 	else {
+		auto [k, v] = split_kv(strType, ":");
+
 		osSql << "Select name From sysobjects with(nolock) Where Type = ";
-		osSql << "'" << strType << "' ";	
+		osSql << "'" << k << "' ";	
 	}
 
 	osSql << "order by name";
@@ -150,22 +175,20 @@ void Run(const string &strConnectionString, const string &strPath, const string 
 	GLASS::ADOComm adoProc;
 	adoProc.Create(strConnectionString.c_str());
 
-
 	while (!ado.IsEOF()) {
 		strName = (LPCSTR)(_bstr_t)ado("name");
 
 		if (bDirectory) {
-			ProcedureBackup(adoProc, strPath, strName);
+			ProcedureBackup(adoProc, strPath, strName, strType);
 		}
 		else {
-			fout << GetTextObject(adoProc, strName) << endl;
-			fout << endl;
-			fout << "GO" << endl;
-			fout << "--** END : " << strName << endl;
-			fout << "--**************************************************************" << endl;
+			fout << GetTextObject(adoProc, strName, strType) << '\n';
+			fout << '\n';
+			fout << "GO" << '\n';
+			fout << "--** END : " << strName << '\n';
+			fout << "--**************************************************************" << '\n';
 			fout << endl;
 		}
-		
 
 		cout << '\r' << string(75, ' ');
 		cout << '\r';
@@ -188,8 +211,9 @@ void Usage()
 	cout << "      IF = 인라인 테이블 함수" << endl;
 	cout << "      TF = 테이블 함수" << endl;
 	cout << "      TR = 트리거" << endl;
-	//cout << "      V = 뷰" << endl;
-	cout << "      ALL = 위의 Type 모두" << endl;
+	cout << "      V = 뷰" << endl;
+	cout << "      U:<GetDDLProcName> = 테이블" << endl;
+	cout << "      ALL = ('FN', 'IF', 'P', 'TF', 'TR')" << endl;
 	cout << endl;
 }
 
