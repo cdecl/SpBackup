@@ -51,31 +51,31 @@ string replaceall(string str, const string &strFind, const string &strReplaced)
 	return str;
 }
 
-string GetTypeName(const string& strType)
-{
-	string strName;
-
-	if (strType == "FN") {
-		strName = "ScalarFunction";
-	}
-	else if (strType == "IF") {
-		strName = "InlineTableFunction";
-	}
-	else if (strType == "P") {
-		strName = "Procedure";
-	}
-	else if (strType == "TF") {
-		strName = "TableFunction";
-	}
-	else if (strType == "TR") {
-		strName = "Trigger";
-	}
-	else if (strType == "V") {
-		strName = "View";
-	}
-	
-	return strName;
-}
+//string GetTypeName(const string& strType)
+//{
+//	string strName;
+//
+//	if (strType == "FN") {
+//		strName = "ScalarFunction";
+//	}
+//	else if (strType == "IF") {
+//		strName = "InlineTableFunction";
+//	}
+//	else if (strType == "P") {
+//		strName = "Procedure";
+//	}
+//	else if (strType == "TF") {
+//		strName = "TableFunction";
+//	}
+//	else if (strType == "TR") {
+//		strName = "Trigger";
+//	}
+//	else if (strType == "V") {
+//		strName = "View";
+//	}
+//	
+//	return strName;
+//}
 
 string GetTextObject(GLASS::ADOComm &adoProc, const string &strProcName, const string &strType)
 {
@@ -201,20 +201,19 @@ void Run(const string &strConnectionString, const string &strPath, const string 
 
 void Usage()
 {
-	cout << endl;
-	cout << "Usage: SpBackup.exe \"DB_CONNECTINSTRING\" \"SAVE_PATH\" [Type] " << endl;
-	cout << "  - DB_CONNECTINSTRING : DB 연결문자열 " << endl;
-	cout << "  - SAVE_PATH : 저장폴더(객체명으로 각각 생성) 혹은 저장파일(지정한 파일생성) " << endl;
-	cout << "  - [Type] : 객체타입  " << endl;
+	cout << "Usage: SpBackup.exe [connectionString] [path] [type] " << endl;
+	cout << "  - connectionString : DB 연결문자열 " << endl;
+	cout << "  - path : 저장폴더(객체명으로 각각 생성) 혹은 저장파일(지정한 파일생성) " << endl;
+	cout << "  - type : 객체타입  " << endl;
+	cout << "      ALL = ('FN', 'IF', 'P', 'TF', 'TR')" << endl;
 	cout << "      P = 저장 프로시저 (default)" << endl;
 	cout << "      FN = 스칼라 함수" << endl;
 	cout << "      IF = 인라인 테이블 함수" << endl;
 	cout << "      TF = 테이블 함수" << endl;
 	cout << "      TR = 트리거" << endl;
 	cout << "      V = 뷰" << endl;
-	cout << "      U:<GetDDLProcName> = 테이블" << endl;
-	cout << "      ALL = ('FN', 'IF', 'P', 'TF', 'TR')" << endl;
-	cout << endl;
+	cout << "      U:<GetDDLProcName> = 테이블 (U:TableCreateScriptProcedure)" << endl;
+	cout << "  - verion: 210202.1 " << "(_MSC_VER:" << _MSC_VER << ")" << endl;
 }
 
 int main(int argc, char *argv[])
