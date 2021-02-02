@@ -90,7 +90,7 @@ string GetTextObject(GLASS::ADOComm &adoProc, const string &strProcName, const s
 		cmd.AddParamInputVarchar("@obj_name", strProcName.c_str(), 200);
 	}
 	else {
-		cmd.SetCommandText("Select text As txt From syscomments with(nolock) Where id = object_id( ? )");
+		cmd.SetCommandText("SELECT text AS txt FROM syscomments with(nolock) WHERE id = object_id( ? )");
 		cmd.AddParamInputVarchar("@obj_name", strProcName.c_str(), 200);
 	}
 
@@ -148,24 +148,23 @@ void Run(const string &strConnectionString, const string &strPath, const string 
 	}
 
 	std::ostringstream osSql;
+	auto [k, v] = split_kv(strType, ":");
 
-	if (strType == "ALL") {
-		// osSql << "Select name From sysobjects with(nolock) Where Type In ('FN', 'IF', 'P', 'TF', 'TR', 'V') ";
-		osSql << "Select name From sysobjects with(nolock) Where Type In ('FN', 'IF', 'P', 'TF', 'TR') ";
-	}
-	else {
-		auto [k, v] = split_kv(strType, ":");
-
-		osSql << "Select name From sysobjects with(nolock) Where Type = ";
-		osSql << "'" << k << "' ";	
-	}
-
-	osSql << "order by name";
-	
+	string sql = R"(
+		SELECT	name 
+		FROM	sysobjects with(nolock)
+		WHERE	uid = 1
+		AND		Type = ?
+		ORDER BY name
+	)";
+		
+	GLASS::CommandHelper cmd;
+	cmd.SetCommandText(sql.c_str());
+	cmd.AddParamInputVarchar("@obj_name", k.c_str(), 8);
 
 	GLASS::ADOComm ado;
 	ado.Create(strConnectionString.c_str());
-	ado.OpenRs(osSql.str().c_str());
+	ado.OpenRs(cmd);
 
 	const long lRowCount = ado.GetRecordCount();
 	long i = 0;
@@ -205,7 +204,6 @@ void Usage()
 	cout << "  - connectionString : DB 연결문자열 " << endl;
 	cout << "  - path : 저장폴더(객체명으로 각각 생성) 혹은 저장파일(지정한 파일생성) " << endl;
 	cout << "  - type : 객체타입  " << endl;
-	cout << "      ALL = ('FN', 'IF', 'P', 'TF', 'TR')" << endl;
 	cout << "      P = 저장 프로시저 (default)" << endl;
 	cout << "      FN = 스칼라 함수" << endl;
 	cout << "      IF = 인라인 테이블 함수" << endl;
@@ -213,7 +211,7 @@ void Usage()
 	cout << "      TR = 트리거" << endl;
 	cout << "      V = 뷰" << endl;
 	cout << "      U:<GetDDLProcName> = 테이블 (U:TableCreateScriptProcedure)" << endl;
-	cout << "  - verion: 210202.1 " << "(_MSC_VER:" << _MSC_VER << ")" << endl;
+	cout << "  - verion: 210202.2 " << "(_MSC_VER:" << _MSC_VER << ")" << endl;
 }
 
 int main(int argc, char *argv[])
